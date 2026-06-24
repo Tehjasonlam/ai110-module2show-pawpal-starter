@@ -7,10 +7,21 @@
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
 
+The initial UML includes four classes: **Task**, **Pet**, **Owner**, and **Scheduler**.
+
+- **Task** (dataclass): represents a single care item — title, duration in minutes, priority ("low"/"medium"/"high"), task type (walk, feeding, meds, etc.), and whether it recurs daily.
+- **Pet** (dataclass): holds the pet's name, species, age, and its list of tasks. Responsible for storing and returning the task list.
+- **Owner** (dataclass): holds the owner's name, total time available today (in minutes), preferences (e.g. "prefer morning walks"), and their list of pets.
+- **Scheduler**: takes an Owner and a Pet and decides which tasks fit within the available time window, ordered by priority. Responsible for `generate_schedule()` and `explain_plan()`.
+
+Key relationships: Owner owns one or more Pets; each Pet holds zero or more Tasks; Scheduler uses the Owner's time budget and the Pet's task list to produce a daily plan.
+
 **b. Design changes**
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
+
+*To be filled in after implementation — document any classes, attributes, or relationships that shifted from the original UML and why.*
 
 ---
 
