@@ -47,11 +47,23 @@ pip install -r requirements.txt
 Paste a sample of your app's CLI or Streamlit output here so a reader can see what a generated plan looks like:
 
 ```
-# e.g.:
-# Daily plan for Biscuit (Golden Retriever):
-#   08:00 — Morning walk (30 min) [priority: high]
-#   09:00 — Feeding (10 min) [priority: high]
-#   ...
+=============================================
+Daily plan for Biscuit (dog):
+  08:00 AM — Morning walk (30 min) [priority: high]
+  08:30 AM — Breakfast feeding (10 min) [priority: high]
+  08:40 AM — Heartworm medication (5 min) [priority: high]
+  08:45 AM — Fetch / enrichment (20 min) [priority: medium]
+  09:05 AM — Brushing (15 min) [priority: low]
+
+Total scheduled: 80 min of 90 min available
+=============================================
+Daily plan for Luna (cat):
+  08:00 AM — Breakfast feeding (10 min) [priority: high]
+  08:10 AM — Litter box clean (10 min) [priority: medium]
+  08:20 AM — Playtime (15 min) [priority: low]
+
+Total scheduled: 35 min of 90 min available
+=============================================
 ```
 
 ## 🧪 Testing PawPal+
@@ -68,6 +80,16 @@ Sample test output:
 
 ```
 # Paste your pytest output here
+============================= test session starts =============================
+platform win32 -- Python 3.13.5, pytest-9.0.3
+collected 4 items
+
+tests/test_pawpal.py::test_mark_complete_changes_status PASSED           [ 25%]
+tests/test_pawpal.py::test_add_task_increases_pet_task_count PASSED      [ 50%]
+tests/test_pawpal.py::test_scheduler_excludes_tasks_that_exceed_available_time PASSED [ 75%]
+tests/test_pawpal.py::test_scheduler_orders_by_priority PASSED           [100%]
+
+============================== 4 passed in 0.06s ==============================
 ```
 
 ## 📐 Smarter Scheduling
