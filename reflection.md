@@ -38,10 +38,14 @@ Key relationships: Owner owns one or more Pets; each Pet holds zero or more Task
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
 
+The scheduler considers two constraints: **available time** (a budget in minutes set by the owner) and **task priority** (high/medium/low). Priority is the primary sort key — high-priority tasks are always scheduled first and low-priority tasks are only included if time remains. Available time is the hard cutoff: any task that would exceed the remaining budget is skipped entirely, regardless of importance. Time was chosen as a hard constraint because it reflects a real physical limit (the owner's day), while priority is a preference that the algorithm can optimize around.
+
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
+
+The conflict detector checks for **overlapping time windows** (start time + duration) rather than just duplicate start times. This catches more real conflicts, but it means two tasks scheduled back-to-back with zero gap are never flagged — even if travel or setup time between them would make that impossible in practice. This tradeoff is reasonable for a home-based pet care app where most tasks (feeding, grooming, playtime) happen in the same location with no travel overhead, so a zero-gap schedule is realistic.
 
 ---
 

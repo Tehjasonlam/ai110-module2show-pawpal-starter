@@ -78,19 +78,44 @@ pytest --cov
 
 Sample test output:
 
+**What the tests cover:**
+
+| Group | Tests | What's verified |
+|---|---|---|
+| Task basics | 2 | `mark_complete()` flips status; `add_task()` increases count |
+| Scheduling | 4 | Priority ordering, time-budget filtering, empty pet, `scheduled_time` assignment |
+| Sorting | 2 | Chronological order by HH:MM; unscheduled tasks go last |
+| Recurring tasks | 3 | Daily (+1 day), weekly (+7 days), non-recurring returns `None` |
+| Conflict detection | 3 | Overlapping windows flagged; back-to-back tasks not flagged; same start time flagged |
+| Filtering | 2 | Pending-only filter; `None` returns all tasks |
+
 ```
 # Paste your pytest output here
 ============================= test session starts =============================
-platform win32 -- Python 3.13.5, pytest-9.0.3
-collected 4 items
+platform win32 -- Python 3.13.5, pytest-9.0.3, pluggy-1.6.0
+collected 16 items
 
-tests/test_pawpal.py::test_mark_complete_changes_status PASSED           [ 25%]
-tests/test_pawpal.py::test_add_task_increases_pet_task_count PASSED      [ 50%]
-tests/test_pawpal.py::test_scheduler_excludes_tasks_that_exceed_available_time PASSED [ 75%]
-tests/test_pawpal.py::test_scheduler_orders_by_priority PASSED           [100%]
+tests/test_pawpal.py::test_mark_complete_changes_status PASSED           [  6%]
+tests/test_pawpal.py::test_add_task_increases_pet_task_count PASSED      [ 12%]
+tests/test_pawpal.py::test_scheduler_excludes_tasks_that_exceed_available_time PASSED [ 18%]
+tests/test_pawpal.py::test_scheduler_orders_by_priority PASSED           [ 25%]
+tests/test_pawpal.py::test_empty_pet_generates_empty_schedule PASSED     [ 31%]
+tests/test_pawpal.py::test_generate_schedule_assigns_scheduled_time PASSED [ 37%]
+tests/test_pawpal.py::test_sort_by_time_returns_chronological_order PASSED [ 43%]
+tests/test_pawpal.py::test_sort_by_time_unscheduled_tasks_go_last PASSED [ 50%]
+tests/test_pawpal.py::test_daily_recurring_task_creates_next_instance PASSED [ 56%]
+tests/test_pawpal.py::test_weekly_recurring_task_creates_next_instance PASSED [ 62%]
+tests/test_pawpal.py::test_non_recurring_task_returns_none_on_complete PASSED [ 68%]
+tests/test_pawpal.py::test_detect_conflicts_flags_overlapping_tasks PASSED [ 75%]
+tests/test_pawpal.py::test_detect_conflicts_no_warning_for_back_to_back_tasks PASSED [ 81%]
+tests/test_pawpal.py::test_detect_conflicts_exact_same_start_time PASSED [ 87%]
+tests/test_pawpal.py::test_filter_tasks_returns_only_pending PASSED      [ 93%]
+tests/test_pawpal.py::test_filter_tasks_none_returns_all PASSED          [100%]
 
-============================== 4 passed in 0.06s ==============================
+============================== 16 passed in 0.10s ==============================
 ```
+
+**Confidence level: 4/5 stars** — Core logic, recurring tasks, conflict detection, and filtering all covered with happy-path and edge cases. Missing star: the Streamlit UI layer has no automated tests and is verified manually only.
 
 ## 📐 Smarter Scheduling
 
@@ -98,10 +123,11 @@ tests/test_pawpal.py::test_scheduler_orders_by_priority PASSED           [100%]
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Task sorting by priority | `Scheduler.generate_schedule()` | Sorts by high→medium→low before assigning time slots |
+| Task sorting by time | `Scheduler.sort_by_time()` | Sorts by HH:MM scheduled_time using a lambda key; unscheduled tasks go last |
+| Filtering by status | `Scheduler.filter_tasks()` | Returns pending or completed tasks; pass `completed=None` for all |
+| Conflict handling | `Scheduler.detect_conflicts()` | Checks for overlapping windows (start + duration); returns warning strings, never crashes |
+| Recurring tasks | `Task.mark_complete()` | Returns a new Task for the next occurrence — daily (+1 day) or weekly (+7 days) via `timedelta` |
 
 ## 📸 Demo Walkthrough
 

@@ -141,6 +141,10 @@ if st.button("Generate schedule"):
             st.markdown("**Plan explanation:**")
             st.code(scheduler.explain_plan(schedule), language=None)
 
+            conflicts = scheduler.detect_conflicts(schedule)
+            for warning in conflicts:
+                st.warning(warning)
+
             skipped = [t for t in schedule_pet.get_tasks() if t not in schedule]
             if skipped:
                 st.caption(

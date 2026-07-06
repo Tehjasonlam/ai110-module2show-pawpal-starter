@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 _PRIORITY_RANK = {"high": 3, "medium": 2, "low": 1}
 
@@ -13,15 +13,31 @@ class Task:
     priority: str           # "low", "medium", "high"
     task_type: str          # "walk", "feeding", "meds", "grooming", "enrichment", "other"
     is_recurring: bool = True
+    frequency: str = "daily"        # "daily", "weekly", "none"
     is_complete: bool = False
+    scheduled_time: str | None = None   # "HH:MM" assigned by Scheduler.generate_schedule()
+    due_date: date | None = None
 
     def is_high_priority(self) -> bool:
         """Return True if this task is high priority."""
         return self.priority == "high"
 
-    def mark_complete(self) -> None:
-        """Mark this task as completed."""
+    def mark_complete(self) -> "Task | None":
+        """Mark this task done; return the next recurring instance or None if non-recurring."""
         self.is_complete = True
+        if not self.is_recurring or self.frequency == "none":
+            return None
+        delta = timedelta(days=1) if self.frequency == "daily" else timedelta(weeks=1)
+        next_due = (self.due_date or date.today()) + delta
+        return Task(
+            title=self.title,
+            duration_minutes=self.duration_minutes,
+            priority=self.priority,
+            task_type=self.task_type,
+            is_recurring=self.is_recurring,
+            frequency=self.frequency,
+            due_date=next_due,
+        )
 
 
 @dataclass
@@ -74,13 +90,14 @@ class Scheduler:
     owner: Owner
     pet: Pet
     available_minutes: int = 0
+    start_hour: int = 8
 
     def __post_init__(self):
         if self.available_minutes == 0:
             self.available_minutes = self.owner.available_time_minutes
 
     def generate_schedule(self) -> list[Task]:
-        """Sort tasks by priority and return those that fit within available time."""
+        """Sort tasks by priority, assign HH:MM times, and return those that fit."""
         tasks = self.pet.get_tasks()
         sorted_tasks = sorted(
             tasks,
@@ -89,27 +106,58 @@ class Scheduler:
         )
         schedule = []
         remaining = self.available_minutes
+        current = datetime(2000, 1, 1, self.start_hour, 0)
         for task in sorted_tasks:
             if task.duration_minutes <= remaining:
+                task.scheduled_time = current.strftime("%H:%M")
                 schedule.append(task)
                 remaining -= task.duration_minutes
+                current += timedelta(minutes=task.duration_minutes)
         return schedule
 
-    def explain_plan(self, schedule: list[Task], start_hour: int = 8) -> str:
-        """Return a human-readable daily plan with times and reasons for inclusion."""
+    def sort_by_time(self, tasks: list[Task]) -> list[Task]:
+        """Sort tasks by their HH:MM scheduled_time; tasks without a time go last."""
+        return sorted(
+            tasks,
+            key=lambda t: t.scheduled_time if t.scheduled_time is not None else "99:99",
+        )
+
+    def filter_tasks(self, tasks: list[Task], completed: bool | None = None) -> list[Task]:
+        """Return tasks matching the given completion status; None returns all tasks."""
+        if completed is None:
+            return list(tasks)
+        return [t for t in tasks if t.is_complete == completed]
+
+    def detect_conflicts(self, schedule: list[Task]) -> list[str]:
+        """Return warning strings for any tasks whose time windows overlap."""
+        warnings = []
+        timed = [t for t in schedule if t.scheduled_time is not None]
+        for i, task_a in enumerate(timed):
+            start_a = datetime.strptime(task_a.scheduled_time, "%H:%M")
+            end_a = start_a + timedelta(minutes=task_a.duration_minutes)
+            for task_b in timed[i + 1:]:
+                start_b = datetime.strptime(task_b.scheduled_time, "%H:%M")
+                end_b = start_b + timedelta(minutes=task_b.duration_minutes)
+                if start_a < end_b and start_b < end_a:
+                    warnings.append(
+                        f"Conflict: '{task_a.title}' "
+                        f"({start_a.strftime('%H:%M')}–{end_a.strftime('%H:%M')}) "
+                        f"overlaps '{task_b.title}' "
+                        f"({start_b.strftime('%H:%M')}–{end_b.strftime('%H:%M')})"
+                    )
+        return warnings
+
+    def explain_plan(self, schedule: list[Task]) -> str:
+        """Return a human-readable daily plan reading each task's assigned scheduled_time."""
         if not schedule:
             return "No tasks fit within the available time."
-
         lines = [f"Daily plan for {self.pet.name} ({self.pet.species}):"]
-        current = datetime(2000, 1, 1, start_hour, 0)
         for task in schedule:
-            time_str = current.strftime("%I:%M %p")
+            time_str = task.scheduled_time or "??:??"
             lines.append(
                 f"  {time_str} — {task.title} ({task.duration_minutes} min)"
                 f" [priority: {task.priority}]"
             )
-            current += timedelta(minutes=task.duration_minutes)
-
         total = self.total_duration(schedule)
         lines.append(f"\nTotal scheduled: {total} min of {self.available_minutes} min available")
         return "\n".join(lines)
