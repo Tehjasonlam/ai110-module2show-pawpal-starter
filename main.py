@@ -68,8 +68,33 @@ def main():
     if next_groom:
         print(f"  Next weekly grooming due: {next_groom.due_date}")
 
-    # ── 5. Conflict detection ─────────────────────────────────────────────────
-    section("5. Conflict detection — two tasks at the same time")
+    # ── 5. Weighted scheduling ───────────────────────────────────────────────────
+    section("5. Weighted scheduling — shorter high-priority tasks first")
+    weighted_pet = Pet(name="WeightedTest", species="dog", age_years=2)
+    weighted_pet.add_task(Task("Long walk",   30, "high", "walk"))
+    weighted_pet.add_task(Task("Quick meds",   5, "high", "meds"))
+    weighted_pet.add_task(Task("Feeding",     10, "high", "feeding"))
+    weighted_pet.add_task(Task("Brushing",    15, "low",  "grooming"))
+
+    w_scheduler = Scheduler(owner=jordan, pet=weighted_pet)
+    weighted_schedule = w_scheduler.generate_weighted_schedule()
+    print(w_scheduler.explain_plan(weighted_schedule))
+    print()
+    print("  (generate_schedule order would be: Long walk, Quick meds, Feeding, Brushing)")
+    print("  (weighted order:                   Quick meds, Feeding, Long walk, Brushing)")
+
+    # ── 6. Next available slot ────────────────────────────────────────────────
+    section("6. Next available slot")
+    slot = w_scheduler.next_available_slot(weighted_schedule, duration_minutes=10)
+    used = w_scheduler.total_duration(weighted_schedule)
+    print(f"  Schedule uses {used} min of {jordan.available_time_minutes} min")
+    if slot:
+        print(f"  Next free slot for a 10-min task: {slot}")
+    else:
+        print("  No room left for a 10-min task today.")
+
+    # ── 7. Conflict detection ─────────────────────────────────────────────────
+    section("7. Conflict detection — two tasks at the same time")
     conflict_pet = Pet(name="TestPet", species="dog", age_years=1)
     t1 = Task("Walk",    30, "high", "walk")
     t2 = Task("Feeding", 10, "high", "feeding")

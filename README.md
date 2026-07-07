@@ -117,9 +117,18 @@ tests/test_pawpal.py::test_filter_tasks_none_returns_all PASSED          [100%]
 
 **Confidence level: 4/5 stars** — Core logic, recurring tasks, conflict detection, and filtering all covered with happy-path and edge cases. Missing star: the Streamlit UI layer has no automated tests and is verified manually only.
 
-## 📐 Smarter Scheduling
+## Features
 
-> Fill in once you've implemented scheduling logic.
+- **Priority-based scheduling** — high-priority tasks (meds, feeding) always scheduled before medium or low
+- **Time budget enforcement** — any task that would exceed the owner's available minutes is skipped, never truncated
+- **Assigned time slots** — each scheduled task gets a wall-clock start time (e.g., `08:30`) computed automatically
+- **Sort by time** — schedule can be displayed in chronological order via `Scheduler.sort_by_time()`
+- **Task filtering** — view all, pending-only, or completed-only tasks via `Scheduler.filter_tasks()`
+- **Conflict detection** — overlapping time windows (start + duration) are flagged as warnings, program never crashes
+- **Recurring tasks** — marking a daily or weekly task complete returns a new Task due the next day / next week
+- **Explainer output** — `explain_plan()` produces a human-readable schedule showing time, task, and duration
+
+## 📐 Smarter Scheduling
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
@@ -128,6 +137,8 @@ tests/test_pawpal.py::test_filter_tasks_none_returns_all PASSED          [100%]
 | Filtering by status | `Scheduler.filter_tasks()` | Returns pending or completed tasks; pass `completed=None` for all |
 | Conflict handling | `Scheduler.detect_conflicts()` | Checks for overlapping windows (start + duration); returns warning strings, never crashes |
 | Recurring tasks | `Task.mark_complete()` | Returns a new Task for the next occurrence — daily (+1 day) or weekly (+7 days) via `timedelta` |
+| Weighted scheduling | `Scheduler.generate_weighted_schedule()` | Score = priority_rank × 10 + 100/duration; shorter high-priority tasks go first to maximise task count in constrained time |
+| Next available slot | `Scheduler.next_available_slot()` | Returns the earliest HH:MM after the current schedule that fits a new task of a given duration; None if budget is exhausted |
 
 ## 📸 Demo Walkthrough
 
@@ -138,5 +149,38 @@ Describe your app in numbered steps so a reader can follow along without watchin
 3. <!-- Describe this step -->
 4. <!-- Describe this step -->
 5. <!-- Add more steps as needed -->
+
+**Example workflow:**
+1. Enter owner "Jordan" with 90 minutes available and click **Set owner**.
+2. Add pet "Biscuit" (dog, 3 years) and click **Add pet**.
+3. Add three tasks: Morning walk (30 min, high), Feeding (10 min, high), Brushing (15 min, low).
+4. Use the **Filter tasks** radio to confirm all three show as Pending.
+5. Select Biscuit under **Generate Schedule** and click **Generate schedule**.
+6. The app shows a time-sorted table (08:00, 08:30, 08:40), the plan explanation, and a green "No conflicts detected" banner.
+
+**Key Scheduler behaviors shown:**
+- Tasks are sorted by priority before time slots are assigned — high-priority always goes first
+- Any task that would exceed the remaining time budget is listed as Skipped at the bottom
+- Overlapping time windows trigger a yellow conflict warning instead of crashing
+
+**CLI output from `python main.py`:**
+
+```
+==================================================
+  1. Generated Schedules
+==================================================
+Daily plan for Biscuit (dog):
+  08:00 - Morning walk (30 min) [priority: high]
+  08:30 - Breakfast feeding (10 min) [priority: high]
+  08:40 - Heartworm medication (5 min) [priority: high]
+  08:45 - Fetch / enrichment (20 min) [priority: medium]
+  09:05 - Brushing (15 min) [priority: low]
+
+Total scheduled: 80 min of 90 min available
+==================================================
+  5. Conflict detection - two tasks at the same time
+==================================================
+  [!] Conflict: 'Walk' (08:00-08:30) overlaps 'Feeding' (08:15-08:25)
+```
 
 **Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->

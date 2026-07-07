@@ -147,6 +147,55 @@ class Scheduler:
                     )
         return warnings
 
+    def _weighted_score(self, task: Task) -> float:
+        """Compute a composite scheduling score: priority rank × 10 plus a duration-efficiency bonus.
+
+        Among tasks at the same priority level, shorter tasks score higher so more
+        high-priority work fits into a constrained time budget.
+        """
+        rank = _PRIORITY_RANK.get(task.priority, 0)
+        efficiency_bonus = 100 / task.duration_minutes
+        return rank * 10 + efficiency_bonus
+
+    def generate_weighted_schedule(self) -> list[Task]:
+        """Sort by composite priority+efficiency score, assign times, return tasks that fit.
+
+        Compared to generate_schedule(), this prefers shorter high-priority tasks first,
+        maximising the number of important tasks completed when time is tight.
+        """
+        tasks = self.pet.get_tasks()
+        sorted_tasks = sorted(tasks, key=self._weighted_score, reverse=True)
+        schedule = []
+        remaining = self.available_minutes
+        current = datetime(2000, 1, 1, self.start_hour, 0)
+        for task in sorted_tasks:
+            if task.duration_minutes <= remaining:
+                task.scheduled_time = current.strftime("%H:%M")
+                schedule.append(task)
+                remaining -= task.duration_minutes
+                current += timedelta(minutes=task.duration_minutes)
+        return schedule
+
+    def next_available_slot(self, schedule: list[Task], duration_minutes: int) -> str | None:
+        """Return the first HH:MM slot after the schedule that fits a task of the given duration.
+
+        Returns None if the remaining time budget cannot accommodate the requested duration.
+        """
+        if not schedule or not any(t.scheduled_time for t in schedule):
+            candidate = datetime(2000, 1, 1, self.start_hour, 0)
+        else:
+            timed = [t for t in schedule if t.scheduled_time]
+            last = max(timed, key=lambda t: t.scheduled_time)
+            candidate = (
+                datetime.strptime(last.scheduled_time, "%H:%M")
+                + timedelta(minutes=last.duration_minutes)
+            )
+        used = self.total_duration(schedule)
+        remaining = self.available_minutes - used
+        if duration_minutes <= remaining:
+            return candidate.strftime("%H:%M")
+        return None
+
     def explain_plan(self, schedule: list[Task]) -> str:
         """Return a human-readable daily plan reading each task's assigned scheduled_time."""
         if not schedule:

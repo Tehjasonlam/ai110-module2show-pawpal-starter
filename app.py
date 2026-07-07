@@ -89,21 +89,32 @@ if st.button("Add task"):
     active_pet.add_task(new_task)
     st.success(f"Added '{task_title}' to {active_pet.name}")
 
-# Show current tasks for selected pet
+# Show current tasks with status filter
 tasks = active_pet.get_tasks()
 if tasks:
-    st.caption(f"Tasks for {active_pet.name}:")
-    st.table(
-        [
-            {
-                "Task": t.title,
-                "Duration (min)": t.duration_minutes,
-                "Priority": t.priority,
-                "Type": t.task_type,
-            }
-            for t in tasks
-        ]
+    filter_status = st.radio(
+        "Filter tasks:", ["All", "Pending", "Completed"],
+        horizontal=True, key="task_filter"
     )
+    _sched = Scheduler(owner=owner, pet=active_pet)
+    if filter_status == "Pending":
+        visible = _sched.filter_tasks(tasks, completed=False)
+    elif filter_status == "Completed":
+        visible = _sched.filter_tasks(tasks, completed=True)
+    else:
+        visible = tasks
+
+    if visible:
+        st.caption(f"Tasks for {active_pet.name} ({filter_status.lower()}):")
+        st.table([{
+            "Task": t.title,
+            "Duration (min)": t.duration_minutes,
+            "Priority": t.priority,
+            "Type": t.task_type,
+            "Status": "Done" if t.is_complete else "Pending",
+        } for t in visible])
+    else:
+        st.info(f"No {filter_status.lower()} tasks for {active_pet.name}.")
 else:
     st.info(f"No tasks for {active_pet.name} yet.")
 
@@ -126,25 +137,30 @@ if st.button("Generate schedule"):
         if not schedule:
             st.error("No tasks fit within your available time.")
         else:
-            st.success(f"Schedule for {schedule_pet.name}")
-            st.table(
-                [
-                    {
-                        "Task": t.title,
-                        "Duration (min)": t.duration_minutes,
-                        "Priority": t.priority,
-                        "Type": t.task_type,
-                    }
-                    for t in schedule
-                ]
-            )
+            # Display schedule sorted by assigned time slot
+            sorted_schedule = scheduler.sort_by_time(schedule)
+            st.success(f"Schedule for {schedule_pet.name} — {len(sorted_schedule)} tasks")
+            st.table([{
+                "Time": t.scheduled_time or "--",
+                "Task": t.title,
+                "Duration (min)": t.duration_minutes,
+                "Priority": t.priority,
+                "Type": t.task_type,
+            } for t in sorted_schedule])
+
             st.markdown("**Plan explanation:**")
             st.code(scheduler.explain_plan(schedule), language=None)
 
+            # Conflict warnings
             conflicts = scheduler.detect_conflicts(schedule)
-            for warning in conflicts:
-                st.warning(warning)
+            if conflicts:
+                st.markdown("**Schedule Conflicts Detected:**")
+                for warning in conflicts:
+                    st.warning(f"Time overlap: {warning}")
+            else:
+                st.success("No scheduling conflicts detected.")
 
+            # Skipped tasks
             skipped = [t for t in schedule_pet.get_tasks() if t not in schedule]
             if skipped:
                 st.caption(
